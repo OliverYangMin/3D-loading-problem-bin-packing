@@ -1,0 +1,37 @@
+require 'Rect'
+require 'Space'
+require 'functions'
+
+
+function main()
+    math.randomseed(8)
+    init()
+    repeat
+        table.sort(empty, lexicoCompare) 
+        
+        local index = math.random(#empty) -- choose the maxiaml space
+        local layer, layer_type = createLayerForSpace(empty[index]) -- choose layer: rect type\rect direction\column direction
+        
+        empty[index]:setLayerPosition(layer)                        -- choose the layer`s position, 
+        rects[layer_type].num = rects[layer_type].num - layer.num
+        
+        local space1, space2 = empty[index]:createMaxSpace(layer) 
+        
+        layer:draw(); layer:pos(); layer:cutBox()
+        
+        total_volume = total_volume + layer.volume
+    
+        table.remove(empty, index)  
+        
+        dropIntersection(layer)
+        
+        if space1 then space1:insertEmpty() end 
+        if space2 then space2:insertEmpty() end 
+       
+        
+        --Sleep(500)
+    until #rects == 0 or #empty == 0 
+    outputResult()
+end 
+
+main()
