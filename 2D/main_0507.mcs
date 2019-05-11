@@ -2,6 +2,23 @@ require 'Rect'
 require 'Space'
 require 'functions'
 
+function dropIntersection(layer)
+    for i=#empty,1,-1 do                                                 
+        local spaces = {empty[i]:cutSpace(layer)}
+        if #spaces > 0 then
+            table.remove(empty, i)  
+            for s=#spaces,1,-1 do
+                if spaces[s] then
+                    for j=i-1,1,-1 do
+                        if spaces[s]:isBeContained(empty[j]) then goto continue end 
+                    end 
+                    spaces[s]:insertEmpty()
+                end 
+                ::continue::
+            end 
+        end
+    end 
+end
 
 function main()
     math.randomseed(8)
@@ -18,7 +35,7 @@ function main()
         local space1, space2 = empty[index]:createMaxSpace(layer) 
         
         layer:draw(); layer:pos(); layer:cutBox()
-        
+        Update(m3d)
         total_volume = total_volume + layer.volume
     
         table.remove(empty, index)  
@@ -27,8 +44,6 @@ function main()
         
         if space1 then space1:insertEmpty() end 
         if space2 then space2:insertEmpty() end 
-       
-        
         --Sleep(500)
     until #rects == 0 or #empty == 0 
     outputResult()
