@@ -4,13 +4,12 @@ local function distance(node1, node2)
     return dis
 end
 
-Space = { isC = false, x = 0, y = 0, corners = {}, volume = 0} --node1 = {0,0}, node2 = {0,0},
+Space = {x = 0, y = 0, corners = {}, volume = 0, node1 = {}, node2 = {}}
 Space.__index = Space
 
 function Space:new(node1, node2)
-    local self = {} 
+    local self = {node1 = node1, node2 = node2} 
     setmetatable(self, Space)
-    self.node1, self.node2 = {unpack(node1)}, {unpack(node2)}
     self.x, self.y = {node1[1], node2[1]}, {node1[2], node2[2]}
     self.w, self.h = node2[1] - node1[1], node2[2] - node1[2]
     self.corners = {node1, {node2[1], node1[2]}, node2, {node1[1], node2[2]}}

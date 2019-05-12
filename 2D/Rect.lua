@@ -3,10 +3,8 @@ Rect = {w = 0, h = 0, num = 1, x = 0, y = 0, volume = 0, tp = 0}
 Rect.__index = Rect
 
 function Rect:new(w, h, num, small_w, small_h)
-    local self = {}
+    local self = {w = w, h = h, num = num, volume = w * h}
     setmetatable(self, Rect)
-    self.w, self.h, self.num = w, h, num
-    self.volume = self.w * self.h
     self.small_w, self.small_h = small_w or w, small_h or h
     return self
 end 
