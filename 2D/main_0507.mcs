@@ -2,51 +2,36 @@ require 'Rect'
 require 'Space'
 require 'functions'
 
-function dropIntersection(layer)
-    for i=#empty,1,-1 do                                                 
-        local spaces = {empty[i]:cutSpace(layer)}
-        if #spaces > 0 then
-            table.remove(empty, i)  
-            for s=#spaces,1,-1 do
-                if spaces[s] then
-                    for j=i-1,1,-1 do
-                        if spaces[s]:isBeContained(empty[j]) then goto continue end 
-                    end 
-                    spaces[s]:insertEmpty()
-                end 
-                ::continue::
-            end 
-        end
-    end 
-end
+
+
 
 function main()
     math.randomseed(8)
+    local starttime = os.time()
+    local used_volume = 0
     init()
     repeat
-        table.sort(empty, lexicoCompare) 
+        table.sort(empty, compareSpace) 
         
         local index = math.random(#empty) -- choose the maxiaml space
-        local layer, layer_type = createLayerForSpace(empty[index]) -- choose layer: rect type\rect direction\column direction
+        local layer, layer_type = empty[index]:chooseBestLayer()    -- choose layer: rect type\rect direction\column direction
         
         empty[index]:setLayerPosition(layer)                        -- choose the layer`s position, 
         rects[layer_type].num = rects[layer_type].num - layer.num
         
-        local space1, space2 = empty[index]:createMaxSpace(layer) 
+        local spaces = empty[index]:createMaxSpace(layer) 
         
         layer:draw(); layer:pos(); layer:cutBox()
-        Update(m3d)
-        total_volume = total_volume + layer.volume
+        --Update(m3d)
+        used_volume = used_volume + layer.volume
     
         table.remove(empty, index)  
-        
-        dropIntersection(layer)
-        
-        if space1 then space1:insertEmpty() end 
-        if space2 then space2:insertEmpty() end 
+
+        layer:cutSpaceOverlap()        
+        for i=1,#spaces do spaces[i]:insertEmpty() end
         --Sleep(500)
-    until #rects == 0 or #empty == 0 
-    outputResult()
+    until isNoLeft() or #empty == 0 
+    outputResult(used_volume, starttime)
 end 
 
 main()
