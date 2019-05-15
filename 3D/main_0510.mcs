@@ -1,0 +1,63 @@
+require 'Box'
+require 'Space'
+require 'functions'
+
+
+
+function main()
+    math.randomseed(7)
+  
+    init(7)
+    container = Space:new({0, 0, 0},{W, H, D}, true)
+    for p=1,PSIZE do
+        local starttime, used_volume = os.time(), 0
+        m3d = Create3DWorld('3D-container-loading', true, 1, 30)
+        SetCamera(m3d, W * 2, H * 1.5, -D / 2, 0, 0, D)
+        AddSphere(m3d, 3, 16,255,0,0)
+
+    
+        empty, boxes, packed = {container}, {}, {}
+        for i=1,#problems[p] do boxes[#boxes+1] = Box:new(unpack(problems[p][i])) end
+        
+        
+        repeat
+            table.sort(empty, compareSpace) 
+            --local index = 1                                  --math.random(#empty) -- choose the maxiaml space
+            local layer, layer_type = empty[index]:chooseBestLayer()    -- choose layer: box type\box diboxion\column diboxion
+            if not layer_type then break end 
+            empty[index]:setLayerPosition(layer)                        -- choose the layer`s position, 
+        
+            local spaces = empty[index]:createMaxSpace(layer) 
+            layer:draw(); layer:pos(); layer:cutBox()
+            Update(m3d)
+            boxes[layer_type].num = boxes[layer_type].num - layer.num
+            used_volume = used_volume + layer.volume
+            table.remove(empty, index)  
+            
+            for i=#empty,1,-1 do
+                if empty[i]:isTooSmall() then
+                    table.remove(empty, i)
+                end 
+            end 
+            layer:cutOverlapSpace()   
+            for s=1,#spaces do 
+                if not spaces[s]:isBeContainedByEmpty() then
+                    empty[#empty+1] = spaces[s] 
+                end
+            end --- 检验1 是否太小，检验2是否被其他空间包围
+            
+            for i=#empty,1,-1 do
+                if empty[i]:isTooSmall() then
+                    table.remove(empty,i)
+                end 
+            end 
+            
+            packed[#packed+1] = layer
+            Sleep(10)
+        until isNoLeft() or #empty == 0 
+        
+        if outputResult(used_volume, starttime) then print(p) break end
+    end 
+end 
+
+main()
