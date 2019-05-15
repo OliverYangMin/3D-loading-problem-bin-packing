@@ -17,45 +17,6 @@ function Space:new(node1, node2)
     return self
 end 
 
-
-
-function Space:getLayer(w, h, d, num)
-    if w <= self.w and h <= self.h and d <= self.d then 
-        local layers = {}
-        for i=1,3 do
-            for j=1,3 do
-                if i ~= j then 
-                    local xyz, whd = {1,1,1}, {self.w / w, self.h / h, self.d / d}
-                    xyz[i] = math.min(math.floor(whd[i]), num)
-                    xyz[j] = math.min(math.floor(num / xyz[i]), math.floor(whd[j]))
-                    layers[#layers+1] = Box:new(w * xyz[1], h * xyz[2], d * xyz[3], xyz[i] * xyz[j], w, h, d)
-                end 
-            end 
-        end 
-        return self:getBestLayer(layers)
-    end 
-end 
-
-function Space:getBestLayer(cLayers)
-    for i=1,#cLayers do if not cLayers[i].fit then cLayers[i]:getFitness(self) end end 
-    -- table.sort(cLayers, function(a,b) return a.volume>=b.volume and a.fit[1]<=b.fit[1] and a.fit[2]<=b.fit[2] and a.fit[3]<b.fit[3] end)
-    table.sort(cLayers, compareLayer)
-    return cLayers[1]
-end
-    
-function Space:chooseBestLayer()
-    local best_layer, layer_type = {volume = 0} 
-    for i, box in ipairs(boxes) do 
-        if box.num > 0 then 
-            local layer = self:getBestLayer(box:getLayersFromDiffDirection(self))
-            if layer and compareLayer(layer, best_layer) then
-                best_layer, layer_type = layer, i
-            end 
-        end 
-    end 
-    return best_layer, layer_type
-end 
-
 function Space:minSpaceDistance()
     local min, mcorner = {math.huge, math.huge, math.huge}
     for c,corner in ipairs(self.corners) do
@@ -69,34 +30,77 @@ function Space:minSpaceDistance()
     return min, mcorner
 end
 
-function Space:createMaxSpace(box)
+function Space:getLayer(w, h, d, box)
+    if w <= self.w and h <= self.h and d <= self.d then 
+        local layers = {}
+        for i=1,3 do
+            for j=1,3 do
+                if i ~= j then 
+                    local xyz, whd = {1,1,1}, {self.w / w, self.h / h, self.d / d}
+                    xyz[i] = math.min(math.floor(whd[i]), box.num)
+                    xyz[j] = math.min(math.floor(box.num / xyz[i]), math.floor(whd[j]))
+                    layers[#layers+1] = Layer:new(w * xyz[1], h * xyz[2], d * xyz[3], xyz[i] * xyz[j], w, h, d, box.tp)
+                end 
+            end 
+        end 
+        return self:getBestLayer(layers)
+    end 
+end 
+
+function Space:getBestLayer(cLayers)
+    for i=1,#cLayers do if not cLayers[i].fit then cLayers[i]:getFitness(self) end end 
+    table.sort(cLayers, compareLayer)
+    return cLayers[1]
+end
+    
+function Space:chooseBestLayer()
+    local best_layer = {volume = 0} 
+    for i, box in ipairs(boxes) do 
+        if box.num > 0 then 
+            local layer = self:getBestLayer(box:getLayersFromDiffDirection(self))
+            if layer and compareLayer(layer, best_layer) then
+                best_layer = layer
+            end 
+        end 
+    end 
+    return best_layer
+end 
+
+function Space:setLayerPosition(layer)
+    local c = self.mcorner
+    layer:setPosition{c % 4 < 2 and self.corners[c][1] or self.corners[c][1] - layer.w, 
+        (c % 4 > 0 and c % 4 < 3) and  self.corners[c][2] or self.corners[c][2] - layer.h, 
+        c > 4 and self.corners[c][3] - layer.d or self.corners[c][3]} 
+end 
+
+function Space:createMaxSpace(layer)
     local spaces = {}
-    if box.w < self.w then 
+    if layer.w < self.w then 
         if self.mcorner % 4 < 2 then -- 1458
-            local space = Space:new({self.x[1] + box.w, self.y[1], self.z[1]}, self.node2) 
+            local space = Space:new({self.x[1] + layer.w, self.y[1], self.z[1]}, self.node2) 
             if not space:isTooSmall() then spaces[#spaces+1] = space end
         else
-            local space = Space:new(self.node1, {self.x[2] - box.w, self.y[2], self.z[2]})           
+            local space = Space:new(self.node1, {self.x[2] - layer.w, self.y[2], self.z[2]})           
             if not space:isTooSmall() then spaces[#spaces+1] = space end
         end 
     end
     
-    if box.h < self.h then
+    if layer.h < self.h then
         if self.mcorner % 4 > 0 and self.mcorner % 4 < 3 then -- 1256
-            local space = Space:new({self.x[1], self.y[1] + box.h, self.z[1]}, self.node2)
+            local space = Space:new({self.x[1], self.y[1] + layer.h, self.z[1]}, self.node2)
             if not space:isTooSmall() then spaces[#spaces+1] = space end
         else
-            local space = Space:new(self.node1, {self.x[2], self.y[2] - box.h, self.z[2]})
+            local space = Space:new(self.node1, {self.x[2], self.y[2] - layer.h, self.z[2]})
             if not space:isTooSmall() then spaces[#spaces+1] = space end
         end 
     end 
     
-    if box.d < self.d then
+    if layer.d < self.d then
         if self.mcorner < 5 then -- 1234
-            local space = Space:new({self.x[1], self.y[1], self.z[1] + box.d}, self.node2)
+            local space = Space:new({self.x[1], self.y[1], self.z[1] + layer.d}, self.node2)
             if not space:isTooSmall() then spaces[#spaces+1] = space end 
         else
-            local space = Space:new(self.node1, {self.x[2], self.y[2], self.z[2] - box.d})
+            local space = Space:new(self.node1, {self.x[2], self.y[2], self.z[2] - layer.d})
             if not space:isTooSmall() then spaces[#spaces+1] = space end
         end 
     end 
@@ -104,43 +108,9 @@ function Space:createMaxSpace(box)
     return spaces
 end 
 
-function Space:setLayerPosition(box)
-    local c = self.mcorner
-    box:setPosition{c % 4 < 2 and self.corners[c][1] or self.corners[c][1] - box.w, 
-        (c % 4 > 0 and c % 4 < 3) and  self.corners[c][2] or self.corners[c][2] - box.h, 
-        c > 4 and self.corners[c][3] - box.d or self.corners[c][3]} 
-end 
-
-
-
-function Space:insertEmpty()
-    if not self:isTooSmall() then empty[#empty+1] = self end
-end 
-
---function Space:(num, minx, maxx)
---    local whd = {'w', 'h', 'd'}, xyz = {'x', 'y', 'z'}
---    whd,xyz = whd[num], xyz[num]
---    if box[whd] < self[whd] then 
---        if minx == self[xyz][1] then
---            return Space:new({self.x[1] + box[whd], self.y[1], self.z[1]}, self.node2) 
---        elseif maxx == self[xyz][2] then
---            return Space:new(self.node1, {self.x[2] - box[whd], self.y[2], self.z[2]})  
---        else
---            return Space:new(self.node1, {minx, self.y[2], self.z[2]}), Space:new({maxx, self.y[1], self.z[1]}, self.node2)
---        end 
---    end 
---end 
-function Space:isOverlap(box)
-    local minx,miny,minz = math.max(self.x[1], box.x), math.max(self.y[1], box.y), math.max(self.z[1], box.z) 
-    local maxx,maxy,maxz = math.min(self.x[2], box.x + box.w), math.min(self.y[2], box.y + box.h), math.min(self.z[2], box.z + box.d)
-    return minx < maxx and miny < maxy and minz < maxz 
-end 
-
-
-
-function Space:cutSpace(box)
-    local minx,miny,minz = math.max(self.x[1], box.x), math.max(self.y[1], box.y), math.max(self.z[1], box.z) 
-    local maxx,maxy,maxz = math.min(self.x[2], box.x + box.w), math.min(self.y[2], box.y + box.h), math.min(self.z[2], box.z + box.d)
+function Space:cutSpace(layer)
+    local minx,miny,minz = math.max(self.x[1], layer.x), math.max(self.y[1], layer.y), math.max(self.z[1], layer.z) 
+    local maxx,maxy,maxz = math.min(self.x[2], layer.x + layer.w), math.min(self.y[2], layer.y + layer.h), math.min(self.z[2], layer.z + layer.d)
     if minx < maxx and miny < maxy and minz < maxz then
         local spaces = {}
         local overlap = {maxx - minx, maxy - miny, maxz - minz}
@@ -182,6 +152,28 @@ function Space:cutSpace(box)
     return false
 end 
 
+
+function Space:isFeasible(box)
+    if box.vw then
+        if (self.w >= box.h and self.h >= box.w and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h) then
+            return true
+        end 
+    end 
+    
+    if box.vh then
+        if (self.w >= box.w and self.h >= box.h and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h) then
+            return true
+        end 
+    end 
+    
+    if box.vd then
+        if (self.w >= box.w and self.h >= box.d and self.d >= box.h) or (self.w >= box.h and self.h >= box.d and self.d >= box.w) then
+            return true
+        end 
+    end 
+    return false
+end 
+
 function Space:isTooSmall()
     for _,box in ipairs(boxes) do
         if box.num > 0 and self:isFeasible(box) then
@@ -190,6 +182,13 @@ function Space:isTooSmall()
     end 
     return true
 end 
+
+function Space:isOverlap(layer)
+    local minx,miny,minz = math.max(self.x[1], layer.x), math.max(self.y[1], layer.y), math.max(self.z[1], layer.z) 
+    local maxx,maxy,maxz = math.min(self.x[2], layer.x + layer.w), math.min(self.y[2], layer.y + layer.h), math.min(self.z[2], layer.z + layer.d)
+    return minx < maxx and miny < maxy and minz < maxz 
+end 
+
 function Space:isBeContainedBySpace(space)
     return space.x[1] <= self.x[1] and space.y[1] <= self.y[1] and space.z[1] <= self.z[1] and space.x[2] >= self.x[2] and space.y[2] >= self.y[2] and space.z[2] >= self.z[2]
 end 
@@ -199,13 +198,6 @@ function Space:isBeContainedByEmpty()
         if self:isBeContainedBySpace(empty[i]) then return true end 
     end 
     return false
-end 
-function Space:isFeasible(box)
-    local space = {self.w, self.h, self.d}
-    local whd = {box.w, box.h, box.d}
-    table.sort(space)
-    table.sort(whd)
-    return (space[1] >= whd[1] and space[2] >= whd[2] and space[3] >= whd[3])
 end 
 
 function Space:draw()
