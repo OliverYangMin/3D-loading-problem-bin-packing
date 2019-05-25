@@ -13,16 +13,20 @@ function Layer:getFitness(space)
     table.sort(self.fit)
 end 
 
-function Layer:cutOverlapSpace()
-    for i=#empty,1,-1 do                                                 
-        local spaces = empty[i]:cutSpace(self)
-        if spaces then 
-            table.remove(empty, i)  
-            for s=#spaces,1,-1 do
-                if not spaces[s]:isBeContainedByEmpty() then
-                    empty[#empty+1] = spaces[s]
+function Layer:updateRemainingEmpty()
+    for i=#empty,1,-1 do       
+        if empty[i]:isTooSmall() then
+            table.remove(empty, i)
+        else
+            local spaces = empty[i]:cutSpace(self)
+            if spaces then 
+                table.remove(empty, i)  
+                for s=#spaces,1,-1 do
+                    if not spaces[s]:isBeContainedByEmpty() then
+                        empty[#empty+1] = spaces[s]
+                    end 
                 end 
-            end 
+            end
         end
     end 
 end

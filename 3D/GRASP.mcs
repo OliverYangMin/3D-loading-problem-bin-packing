@@ -4,17 +4,21 @@ require 'Space'
 require 'functions'
 
 max_iter = 5000
+K = 0.5
 
 function constructive(Pnum, delta)
-    local used_volume, memory, me = 0, {}
-    init(Pnum) 
+    local used_volume, memory, ready = 0, {}, false
+    empty, boxes, packed = {container}, {}, {}
+    for i=1,#problems[Pnum] do 
+        boxes[#boxes+1] = Box:new(unpack(problems[Pnum][i])) 
+    end
+ 
     repeat
         table.sort(empty, compareSpace)             
         local layer = empty[1]:chooseLayer(delta)    
         if not layer then break end
         empty[1]:setLayerPosition(layer)                        
         packed[#packed+1] = layer
-        --layer:draw(); layer:pos(); layer:cutBox();--Update(m3d);Sleep(100)
         boxes[layer.tp]:reduce(layer.num)
         used_volume = used_volume + layer.volume
      
@@ -28,69 +32,45 @@ function constructive(Pnum, delta)
                 empty[#empty+1] = spaces[s] 
             end
         end --- 检验2 是否被其他空间包围
-        if used_volume / container.volume > 0.5 then
+        
+        if not ready and used_volume / container.volume > 0.5 then
+            ready = true
             memory.packed = DeepCopy(packed)
             memory.boxes = DeepCopy(boxes)
             memory.empty = DeepCopy(empty)
+            memory.used_volume = used_volume
         end
     until isNoLeft() or #empty == 0 
-    --outputResult(used_volume)
+    --print('Grasp:', used_volume/container.volume)
     return used_volume/container.volume, memory
 end 
 
-function constructive(Pnum)
-    local used_volume = 0
-    init(Pnum) 
-    repeat
+function improvement(memory)
+   packed = memory.packed
+   empty  = memory.empty
+   boxes = memory.boxes
+   local used_volume = memory.used_volume
+   repeat
         table.sort(empty, compareSpace)             
-        local layer = empty[1]:chooseBestLayer(delta)    
-        if not layer then break end
+        local layer = empty[1]:chooseBestLayer()  
+        if layer.volume == 0 then break end
         empty[1]:setLayerPosition(layer)                        
-        packed[#packed+1] = layer
-        --layer:draw(); layer:pos(); layer:cutBox();--Update(m3d);Sleep(100)
         boxes[layer.tp]:reduce(layer.num)
         used_volume = used_volume + layer.volume
-     
+
         local spaces = empty[1]:createMaxSpace(layer) 
         table.remove(empty, 1) 
-        
+
         layer:updateRemainingEmpty()   
-        
+
         for s=1,#spaces do 
             if not spaces[s]:isBeContainedByEmpty() then
                 empty[#empty+1] = spaces[s] 
             end
         end --- 检验2 是否被其他空间包围
-        if used_volume / container.volume > 0.5 then
-            memory.packed = DeepCopy(packed)
-            memory.boxes = DeepCopy(boxes)
-            memory.empty = DeepCopy(empty)
-        end
     until isNoLeft() or #empty == 0 
-    --outputResult(used_volume)
-    return used_volume/container.volume, memory
-end 
-
-
-function improvement(packed, K)
-    local a = math.ceil(#packed * K)
-    empty = {container}
-    for i=1,a do
-        boxes[packed[i].tp]:reduce(packed[i].num)
-        used_volume = used_volume + packed[i].volume
-        
-        local spaces = empty[1]:createMaxSpace(layer) 
-        table.remove(empty, 1) 
-        
-        layer:updateRemainingEmpty()   
-        
-        for s=1,#spaces do 
-            if not spaces[s]:isBeContainedByEmpty() then
-                empty[#empty+1] = spaces[s] 
-            end
-        end --- 检验2 是否被其他空间包围
-    end
-
+    print('improve:', used_volume/container.volume)
+    return used_volume / container.volume
 end
 
 function chooseDelta()
@@ -108,20 +88,24 @@ function reactiveGRASP(Pnum)
     deltas = {}
     for i=1,9 do deltas[i] = {0.1 * i; count = 0, sum = 0, p = 1 / 9, eval = 0} end  
     local Vbest, Vworst = 0, math.huge
-
+    bestSolution = {}
     for iter=1,max_iter do
         SetProgress(iter, max_iter)
         local n = chooseDelta()
         deltas[n].count = deltas[n].count + 1
         local V, memory, Vstar = constructive(Pnum, deltas[n])
         if V >= Vworst + 0.5 * (Vbest - Vworst) then
-            Vstar = improvement(V)
+            local v = improvement(memory)
+            Vstar = v > V and v or V
         else
             Vstar = V
         end
-        if Vstar > Vbest  then Vbest  = Vstar end 
+        if Vstar > Vbest  then 
+            Vbest  = Vstar 
+            bestSolution = DeepCopy(packed)
+        end 
         if Vstar < Vworst then Vworst = Vstar end 
-        
+       
         deltas[n].sum = deltas[n].sum + Vstar
         
         if iter % 500 == 0 then
@@ -142,7 +126,7 @@ function reactiveGRASP(Pnum)
 end 
 
 function grasp_main()
-    local starttime = 0
+    local starttime = os.time()
     math.randomseed(7)
     readBischooff(7)
     container = Space:new({0, 0, 0}, {W, H, D}, true)
@@ -151,17 +135,5 @@ function grasp_main()
     end 
     print('CPU time: ', os.time() - starttime)
 end
-
-function greedy_main()
-    local starttime = 0
-    math.randomseed(7)
-    readBischooff(7)
-    container = Space:new({0, 0, 0}, {W, H, D}, true)
-    for p=1,1 do --PSIZE do
-        constructiveGreedy(Pnum)
-    end 
-    print('CPU time: ', os.time() - starttime)
-end 
-
 
 grasp_main()

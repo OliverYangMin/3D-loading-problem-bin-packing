@@ -1,0 +1,44 @@
+require 'Box'
+require 'Layer'
+require 'Space'
+require 'functions'
+
+function constructiveGreedy(Pnum)
+    local used_volume = 0
+    init(Pnum) 
+    repeat
+        table.sort(empty, compareSpace)   
+        local layer = empty[1]:chooseBestLayer()
+        if layer.volume == 0 then break end
+        empty[1]:setLayerPosition(layer)                        
+        layer:draw(); layer:pos(); layer:cutBox(); Update(m3d); Sleep(200)
+        boxes[layer.tp]:reduce(layer.num)
+        used_volume = used_volume + layer.volume
+        
+        local spaces = empty[1]:createMaxSpace(layer) 
+        table.remove(empty, 1) 
+        
+        layer:updateRemainingEmpty()   
+        
+        for s=1,#spaces do 
+            if not spaces[s]:isBeContainedByEmpty() then
+                empty[#empty+1] = spaces[s] 
+            end
+        end --- 检验2 是否被其他空间包围
+    until isNoLeft() or #empty == 0 
+    outputResult(used_volume)
+    return used_volume/container.volume
+end 
+
+function greedy_main()
+    local starttime = os.time()
+    math.randomseed(7)
+    readLiansu()
+    container = Space:new({0, 0, 0}, {W, H, D}, true)
+    for p=1,PSIZE do
+        constructiveGreedy(p)
+    end 
+    print('CPU time: ', os.time() - starttime)
+end 
+
+greedy_main()

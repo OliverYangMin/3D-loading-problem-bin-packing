@@ -30,6 +30,54 @@ function Space:minSpaceDistance()
     return min, mcorner
 end
 
+
+
+local function isUnique(layer, layers)
+    for i=1,#layers do
+        if layer.w == layers[i].w and layer.h == layers[i].h and layer.d == layers[i].d then
+            return false
+        end
+    end
+    return true
+end
+
+function Space:buildLayer(w, h, d, box)
+    if w <= self.w and h <= self.h and d <= self.d then 
+        local layers = {}
+        for i=1,3 do
+            for j=1,3 do
+                if i ~= j then 
+                    local xyz, whd = {1,1,1}, {self.w / w, self.h / h, self.d / d}
+                    xyz[i] = math.min(math.floor(whd[i]), box.num)
+                    xyz[j] = math.min(math.floor(box.num / xyz[i]), math.floor(whd[j]))
+                    local layer = Layer:new(w * xyz[1], h * xyz[2], d * xyz[3], xyz[i] * xyz[j], w, h, d, box.tp)
+                    if isUnique(layer, layers) then 
+                        layers[#layers+1] = layer
+                    end
+                end 
+            end 
+        end 
+        return layers
+    end 
+end
+
+function Space:chooseLayer(cDelta)
+    local layers = {}
+    for i, box in ipairs(boxes) do 
+        if box.num > 0 then 
+            table.extend(layers, box:getLayersFromDiffDirection(self))
+        end 
+    end 
+    for i=1,#layers do 
+        if not layers[i].fit then 
+            layers[i]:getFitness(self) 
+        end 
+    end 
+    table.sort(layers, compareLayer)
+    return layers[math.random(1, math.ceil(#layers * cDelta[1]))]
+end
+
+
 function Space:getLayer(w, h, d, box)
     if w <= self.w and h <= self.h and d <= self.d then 
         local layers = {}
@@ -52,12 +100,12 @@ function Space:getBestLayer(cLayers)
     table.sort(cLayers, compareLayer)
     return cLayers[1]
 end
-    
+
 function Space:chooseBestLayer()
     local best_layer = {volume = 0} 
     for i, box in ipairs(boxes) do 
         if box.num > 0 then 
-            local layer = self:getBestLayer(box:getLayersFromDiffDirection(self))
+            local layer = self:getBestLayer(box:getLayersFromDiffDirection1(self))
             if layer and compareLayer(layer, best_layer) then
                 best_layer = layer
             end 
@@ -65,6 +113,10 @@ function Space:chooseBestLayer()
     end 
     return best_layer
 end 
+
+
+    
+
 
 function Space:setLayerPosition(layer)
     local c = self.mcorner

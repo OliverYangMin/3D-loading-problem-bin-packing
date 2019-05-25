@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MICROCITY_PROJECT>
+  <DATA></DATA>
+  <MODULES>
+    <MODULE_LIB>
+      <FILE>Greedy.mcs</FILE>
+      <MODULE name="main">
+        <PARAMETERS name="main"/>
+      </MODULE>
+    </MODULE_LIB>
+    <MODULE_LIB>
+      <FILE>GRASP.mcs</FILE>
+      <MODULE name="main">
+        <PARAMETERS name="main"/>
+      </MODULE>
+    </MODULE_LIB>
+  </MODULES>
+</MICROCITY_PROJECT>
