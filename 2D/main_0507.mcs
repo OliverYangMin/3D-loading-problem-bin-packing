@@ -1,15 +1,25 @@
-require 'Rect'
+require 'Box'
 require 'Space'
+require 'Layer'
 require 'functions'
-
-
-
 
 function main()
     math.randomseed(8)
     local starttime = os.time()
     local used_volume = 0
-    init()
+    local data = {{73,44,98,10}, {60,38,60,10}, {73,60,105,7},    {77,52,90,8},    {58,24,66,9},    {76,55,106,6},    {44,36,55,8},    {58,23,82,8}}
+    W, H = 400, 400
+    
+    m3d = Create3DWorld('3D-container-loading',true, 0.5,50)
+    SetCamera(m3d, 0,300,-100, 0,100,0)
+    AddSphere(m3d, 3)
+
+    container = Space:new({0,0},{W, H})
+    --container:draw()
+    empty, boxes, packed = {container}, {}, {}
+    
+    
+    for i=1,#data do boxes[#boxes+1] = Box:new(data[i][1], data[i][2], data[i][4]) end
     repeat
         table.sort(empty, compareSpace) 
         
@@ -17,21 +27,21 @@ function main()
         local layer, layer_type = empty[index]:chooseBestLayer()    -- choose layer: rect type\rect direction\column direction
         
         empty[index]:setLayerPosition(layer)                        -- choose the layer`s position, 
-        rects[layer_type].num = rects[layer_type].num - layer.num
+        boxes[layer_type]:reduce(layer.num)
         
         local spaces = empty[index]:createMaxSpace(layer) 
         
-        layer:draw(); layer:pos(); layer:cutBox()
-        --Update(m3d)
+        --layer:draw(); layer:pos(); layer:cutBox()
+
         used_volume = used_volume + layer.volume
     
         table.remove(empty, index)  
 
         layer:cutSpaceOverlap()        
         for i=1,#spaces do spaces[i]:insertEmpty() end
-        --Sleep(500)
     until isNoLeft() or #empty == 0 
-    outputResult(used_volume, starttime)
+    --outputResult(used_volume, starttime)
+    return used_volume
 end 
 
 main()

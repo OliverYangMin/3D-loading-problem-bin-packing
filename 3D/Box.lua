@@ -10,26 +10,7 @@ function Box:reduce(num)
     self.num = self.num - num
 end 
 
-function Box:getLayersFromDiffDirection(space) -- 3 * 2 * 1 = 6  -- ToDO   add direction change limitation
-    local layers = {}
-    if self.vw then
-        table.extend(layers, space:buildLayer(self.h, self.w, self.d, self))
-        if self.h ~= self.d then table.extend(layers, space:buildLayer(self.d, self.w, self.h, self)) end 
-    end 
-    
-    if self.vh then
-        table.extend(layers, space:buildLayer(self.w, self.h, self.d, self))
-        if self.w ~= self.d then table.extend(layers, space:buildLayer(self.d, self.h, self.w, self)) end
-    end 
-    
-    if self.vd then
-        table.extend(layers, space:buildLayer(self.w, self.d, self.h, self))
-        if self.w ~= self.h then table.extend(layers, space:buildLayer(self.h, self.d, self.w, self)) end
-    end 
-    return layers
-end 
-
-function Box:getLayersFromDiffDirection1(space) -- 3 * 2 * 1 = 6  -- ToDo   add direction change limitation
+function Box:getLayersFromDiffDirection(space) -- 3 * 2 * 1 = 6  -- ToDo   add direction change limitation
     local layers = {}
     if self.vw then
         layers[#layers+1] = space:getLayer(self.h, self.w, self.d, self)

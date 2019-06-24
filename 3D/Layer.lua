@@ -13,17 +13,17 @@ function Layer:getFitness(space)
     table.sort(self.fit)
 end 
 
-function Layer:updateRemainingEmpty()
-    for i=#empty,1,-1 do       
-        if empty[i]:isTooSmall() then
-            table.remove(empty, i)
+function Layer:updateRemainingSpaces(cSpaces)
+    for i=#cSpaces,1,-1 do       
+        if cSpaces[i]:isTooSmall() then
+            table.remove(cSpaces, i)
         else
-            local spaces = empty[i]:cutSpace(self)
+            local spaces = cSpaces[i]:cutSpace(self)
             if spaces then 
-                table.remove(empty, i)  
+                table.remove(cSpaces, i)  
                 for s=#spaces,1,-1 do
                     if not spaces[s]:isBeContainedByEmpty() then
-                        empty[#empty+1] = spaces[s]
+                        cSpaces[#cSpaces+1] = spaces[s]
                     end 
                 end 
             end
@@ -52,5 +52,5 @@ function Layer:pos()
 end 
 
 function Layer:draw()
-    self.cube = Add3DBox(m3d, self.w, self.d, self.h, boxes[self.tp].w, boxes[self.tp].d, boxes[self.tp].h)
+    self.cube = Add3DBox(m3d, self.w, self.d, self.h, 255 * self.tp / #boxes, 255 * (1 - self.tp / #boxes), self.h)
 end 

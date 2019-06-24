@@ -1,0 +1,68 @@
+local module1	= AddModule ("greedy_main")
+local module2	= AddModule ("grasp_main")
+
+
+function constructiveGreedy(Pnum)
+    local used_volume = 0
+    init(Pnum) 
+    layers = {}
+    repeat
+        table.sort(empty, compareSpace)   -- 将空间排序，选择第一个空间
+    
+        local layer = empty[1]:chooseLayer() -- 在空间中生成最优layer，需要保证这个空间能放进至少一个layer
+        if not layer then break end
+        layers[#layers+1] = layer
+        empty[1]:setLayerPosition(layer)                        
+        --layer:draw(); layer:pos(); layer:cutBox(); Update(m3d); Sleep(100)
+        
+        boxes[layer.tp]:reduce(layer.num)
+        used_volume = used_volume + layer.volume
+        
+        local spaces = empty[1]:createMaxSpace(layer) -- 插入layer后，empty space被切割，生成2-1-0个子空间
+        
+        table.remove(empty, 1) 
+        
+        layer:updateRemainingSpaces(empty)   -- 其他的empty space可能与放置的layer有冲突，需要去重
+        
+        for s=1,#spaces do 
+            if not spaces[s]:isBeContainedByEmpty() then 
+                if not spaces[s]:isTooSmall() then
+                    empty[#empty+1] = spaces[s] 
+                end 
+            end
+        end --- 检验是否被其他空间，或者太小了包围
+        
+    until isNoLeft() or #empty == 0 
+    outputResult(used_volume)
+    return used_volume/container.volume
+end 
+local function init()
+    require 'Box'
+    require 'Layer'
+    require 'Space'
+    require 'functions'
+end 
+
+function greedy_main()
+    init()
+    local starttime = os.time()
+    math.randomseed(7)
+    readBischooff(7)
+    container = Space:new({0, 0, 0}, {W, H, D}, true)
+    for p=1,1 do --PSIZE do
+        constructiveGreedy(p)
+    end 
+    print('CPU time: ', os.time() - starttime)
+end 
+
+function grasp_main()
+    init()
+    local starttime = os.time()
+    max_iter = 5000
+    math.randomseed(7)
+    readBischooff(7)
+    container = Space:new({0, 0, 0}, {W, H, D}, true)
+    reactiveGRASP(1)
+    print('CPU time: ', os.time() - starttime)
+end
+

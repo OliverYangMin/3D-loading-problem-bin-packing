@@ -30,8 +30,6 @@ function Space:minSpaceDistance()
     return min, mcorner
 end
 
-
-
 local function isUnique(layer, layers)
     for i=1,#layers do
         if layer.w == layers[i].w and layer.h == layers[i].h and layer.d == layers[i].d then
@@ -62,21 +60,33 @@ function Space:buildLayer(w, h, d, box)
 end
 
 function Space:chooseLayer(cDelta)
-    local layers = {}
-    for i, box in ipairs(boxes) do 
-        if box.num > 0 then 
-            table.extend(layers, box:getLayersFromDiffDirection(self))
+    if cDelta then 
+        local layers = {}
+        for i, box in ipairs(boxes) do 
+            if box.num > 0 then 
+                table.extend(layers, box:getLayersFromDiffDirection(self))
+            end 
         end 
-    end 
-    for i=1,#layers do 
-        if not layers[i].fit then 
-            layers[i]:getFitness(self) 
+        for i=1,#layers do 
+            if not layers[i].fit then 
+                layers[i]:getFitness(self) 
+            end 
         end 
+        table.sort(layers, compareLayer)
+        return layers[math.random(1,math.ceil(0.5* #layers * cDelta[1]))]
+    else
+        local best_layer = {volume = 0} 
+        for i, box in ipairs(boxes) do 
+            if box.num > 0 then 
+                local layer = self:getBestLayer(box:getLayersFromDiffDirection(self))
+                if layer and compareLayer(layer, best_layer) then
+                    best_layer = layer
+                end 
+            end 
+        end 
+        return best_layer.volume > 0 and best_layer
     end 
-    table.sort(layers, compareLayer)
-    return layers[math.random(1, math.ceil(#layers * cDelta[1]))]
 end
-
 
 function Space:getLayer(w, h, d, box)
     if w <= self.w and h <= self.h and d <= self.d then 
@@ -101,23 +111,6 @@ function Space:getBestLayer(cLayers)
     return cLayers[1]
 end
 
-function Space:chooseBestLayer()
-    local best_layer = {volume = 0} 
-    for i, box in ipairs(boxes) do 
-        if box.num > 0 then 
-            local layer = self:getBestLayer(box:getLayersFromDiffDirection1(self))
-            if layer and compareLayer(layer, best_layer) then
-                best_layer = layer
-            end 
-        end 
-    end 
-    return best_layer
-end 
-
-
-    
-
-
 function Space:setLayerPosition(layer)
     local c = self.mcorner
     layer:setPosition{c % 4 < 2 and self.corners[c][1] or self.corners[c][1] - layer.w, 
@@ -128,33 +121,18 @@ end
 function Space:createMaxSpace(layer)
     local spaces = {}
     if layer.w < self.w then 
-        if self.mcorner % 4 < 2 then -- 1458
-            local space = Space:new({self.x[1] + layer.w, self.y[1], self.z[1]}, self.node2) 
-            if not space:isTooSmall() then spaces[#spaces+1] = space end
-        else
-            local space = Space:new(self.node1, {self.x[2] - layer.w, self.y[2], self.z[2]})           
-            if not space:isTooSmall() then spaces[#spaces+1] = space end
-        end 
+        local space = self.mcorner % 4 < 2 and Space:new({self.x[1] + layer.w, self.y[1], self.z[1]}, self.node2) or Space:new(self.node1, {self.x[2] - layer.w, self.y[2], self.z[2]})  
+        spaces[#spaces+1] = space 
     end
     
     if layer.h < self.h then
-        if self.mcorner % 4 > 0 and self.mcorner % 4 < 3 then -- 1256
-            local space = Space:new({self.x[1], self.y[1] + layer.h, self.z[1]}, self.node2)
-            if not space:isTooSmall() then spaces[#spaces+1] = space end
-        else
-            local space = Space:new(self.node1, {self.x[2], self.y[2] - layer.h, self.z[2]})
-            if not space:isTooSmall() then spaces[#spaces+1] = space end
-        end 
+        local space = (self.mcorner % 4 > 0 and self.mcorner % 4 < 3) and Space:new({self.x[1], self.y[1] + layer.h, self.z[1]}, self.node2) or Space:new(self.node1, {self.x[2], self.y[2] - layer.h, self.z[2]})
+        spaces[#spaces+1] = space
     end 
     
     if layer.d < self.d then
-        if self.mcorner < 5 then -- 1234
-            local space = Space:new({self.x[1], self.y[1], self.z[1] + layer.d}, self.node2)
-            if not space:isTooSmall() then spaces[#spaces+1] = space end 
-        else
-            local space = Space:new(self.node1, {self.x[2], self.y[2], self.z[2] - layer.d})
-            if not space:isTooSmall() then spaces[#spaces+1] = space end
-        end 
+        local space = self.mcorner < 5 and Space:new({self.x[1], self.y[1], self.z[1] + layer.d}, self.node2) or Space:new(self.node1, {self.x[2], self.y[2], self.z[2] - layer.d})
+        spaces[#spaces+1] = space
     end 
     
     return spaces
@@ -204,26 +182,18 @@ function Space:cutSpace(layer)
     return false
 end 
 
-
 function Space:isFeasible(box)
-    if box.vw then
-        if (self.w >= box.h and self.h >= box.w and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h) then
-            return true
-        end 
+    if box.vw and ((self.w >= box.h and self.h >= box.w and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h)) then
+        return true
     end 
     
-    if box.vh then
-        if (self.w >= box.w and self.h >= box.h and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h) then
-            return true
-        end 
+    if box.vh and ((self.w >= box.w and self.h >= box.h and self.d >= box.d) or (self.w >= box.d and self.h >= box.w and self.d >= box.h)) then
+        return true
     end 
     
-    if box.vd then
-        if (self.w >= box.w and self.h >= box.d and self.d >= box.h) or (self.w >= box.h and self.h >= box.d and self.d >= box.w) then
-            return true
-        end 
+    if box.vd and ((self.w >= box.w and self.h >= box.d and self.d >= box.h) or (self.w >= box.h and self.h >= box.d and self.d >= box.w)) then
+        return true
     end 
-    return false
 end 
 
 function Space:isTooSmall()
@@ -252,15 +222,15 @@ function Space:isBeContainedByEmpty()
     return false
 end 
 
-function Space:draw()
-   local bottom = Add3DRect(m3d, self.w*2, self.d)
-    SetPosition(bottom, self.x[1]  , 0, self.z[1] + self.d/2 )
-    local bottom_line = Add3DLine(m3d, self.w)
-    SetPosition(bottom_line, self.x[1], self.y[1]+0.1, self.z[2])
-    local back   = Add3DRect(m3d, self.w, self.h,255,255,0)
-    SetRotation(back, -90, 0, 0)
-    SetPosition(back, self.x[1] + self.w / 2, self.y[1] + self.h / 2, self.z[2])
-    local left   = Add3DRect(m3d, self.h, self.d, 0, 255, 255)
-    SetRotation(left,0, 0, -90)
-    SetPosition(left  , self.x[1] , self.y[1] + self.h / 2, self.z[1] + self.d / 2)
-end 
+--function Space:draw()
+--   local bottom = Add3DRect(m3d, self.w * 2, self.d)
+--    SetPosition(bottom, self.x[1]  , 0, self.z[1] + self.d / 2 )
+--    local bottom_line = Add3DLine(m3d, self.w)
+--    SetPosition(bottom_line, self.x[1], self.y[1]+0.1, self.z[2])
+--    local back  = Add3DRect(m3d, self.w, self.h,255,255,0)
+--    SetRotation(back, -90, 0, 0)
+--    SetPosition(back, self.x[1] + self.w / 2, self.y[1] + self.h / 2, self.z[2])
+--    local left  = Add3DRect(m3d, self.h, self.d, 0, 255, 255)
+--    SetRotation(left,0, 0, -90)
+--    SetPosition(left  , self.x[1] , self.y[1] + self.h / 2, self.z[1] + self.d / 2)
+--end 

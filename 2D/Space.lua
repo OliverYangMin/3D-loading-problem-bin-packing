@@ -30,7 +30,7 @@ end
 
 function Space:chooseBestLayer()
     local best_layer, layer_type = {volume = 0} 
-    for i, rect in ipairs(rects) do 
+    for i, rect in ipairs(boxes) do 
         if rect.num > 0 then 
             local layer = rect:createLayer(self)
             if layer and compareLayer(layer, best_layer) then
@@ -86,8 +86,8 @@ end
 
 
 function Space:isTooSmall()
-    for _,rect in ipairs(rects) do
-        if rect.num > 0 and self:isFeasible(rect) then
+    for _,box in ipairs(boxes) do
+        if box.num > 0 and self:isFeasible(box) then
             return false
         end 
     end 
